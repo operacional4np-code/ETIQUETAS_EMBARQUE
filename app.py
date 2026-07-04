@@ -49,13 +49,13 @@ def salvar_dataframe(df):
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Tamanho exato padrão: 150mm x 100mm
+    # Define o tamanho de página solicitado: 150mm x 100mm
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
-    # Configuração de estilo exata enviada por você
+    # Criando o estilo normal com a fonte Arial correta
     style_normal = ParagraphStyle(
-        name='Normal', 
+        name='EtiquetaNormal', 
         parent=styles['Normal'], 
         fontName='Arial', 
         fontSize=11, 
@@ -69,7 +69,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         margem_h = 5 * mm
         largura_maxima = 140 * mm
         
-        # --- Estrutura de Cabeçalho enviada por você ---
+        # --- Estrutura Original do Cabeçalho ---
         c.setFont('Arial-Bold', 56)
         c.drawString(margem_h, 75 * mm, sigla)
         
@@ -80,29 +80,30 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         
         c.setFont('Arial-Bold', 46)
         c.drawString(margem_h, 55 * mm, "Overpack used")
-        # -----------------------------------------------
+        # ---------------------------------------
         
-        # Textos estruturados
+        # Textos completos
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
         
+        # Criando os objetos Paragraph usando a classe do Platypus importada no topo
         p_expedidor = Paragraph(expedidor_text, style_normal)
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_data = Paragraph(data_text, style_normal)
         
-        # Coordenadas calculadas milimetricamente de baixo para cima para evitar cortes na folha 100mm:
+        # Coordenadas calculadas de baixo para cima para garantir espaçamento e evitar sumiço:
         
-        # 4. EXPEDIDOR (Alocado com folga suficiente abaixo do 'Overpack used')
+        # 1. EXPEDIDOR (Posicionado abaixo do Overpack used com folga)
         p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
-        p_expedidor.drawOn(c, margem_h, 28 * mm)
+        p_expedidor.drawOn(c, margem_h, 30 * mm)
         
-        # 5. RECEBEDOR (Afastado e perfeitamente posicionado no meio da área restante)
-        p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
-        p_recebedor.drawOn(c, margem_h, 12 * mm)
+        # 2. RECEBEDOR (Alocado com espaço seguro no centro inferior)
+        p_recebedor.wrapOn(c, largura_maxima, 15 * mm)
+        p_recebedor.drawOn(c, margem_h, 14 * mm)
         
-        # 6. DATA DE EXPEDIÇÃO (Isolada perfeitamente na última linha do rodapé)
-        p_data.wrapOn(c, largura_maxima, 8 * mm)
+        # 3. DATA DE EXPEDIÇÃO (Fica isolada no rodapé da folha)
+        p_data.wrapOn(c, largura_maxima, 5 * mm)
         p_data.drawOn(c, margem_h, 4 * mm)
         
         c.showPage()
