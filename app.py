@@ -36,15 +36,14 @@ def carregar_dataframe():
 def salvar_dataframe(df):
     df.to_csv(CSV_PATH, index=False, sep=';')
 
-# --- GERAÇÃO DA ETIQUETA EM 150mm x 100mm ---
+# --- GERAÇÃO DA ETIQUETA EM 150mm x 115mm ---
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Tamanho de página padrão: 150mm x 100mm
-    c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
+    # Aumentamos a altura de 100mm para 115mm para dar o espaço necessário
+    c = canvas.Canvas(buffer, pagesize=(150 * mm, 115 * mm))
     styles = getSampleStyleSheet()
     
-    # Usando 'Helvetica' diretamente (fonte padrão universal e nativa do ReportLab)
     style_normal = ParagraphStyle(
         name='EtiquetaNormal', 
         parent=styles['Normal'], 
@@ -60,18 +59,18 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         margem_h = 5 * mm
         largura_maxima = 140 * mm
         
-        # --- Estrutura de Cabeçalho usando as fontes nativas diretas ---
+        # --- Cabeçalho Original (Agora posicionado no topo da nova altura de 115mm) ---
         c.setFont('Helvetica-Bold', 56)
-        c.drawString(margem_h, 75 * mm, sigla)
+        c.drawString(margem_h, 90 * mm, sigla)
         
         numero_str = f"#{i}"
         c.setFont('Helvetica-Bold', 49)
         largura_texto_num = c.stringWidth(numero_str, 'Helvetica-Bold', 49)
-        c.drawString((150 * mm) - margem_h - largura_texto_num, 75 * mm, numero_str)
+        c.drawString((150 * mm) - margem_h - largura_texto_num, 90 * mm, numero_str)
         
         c.setFont('Helvetica-Bold', 46)
-        c.drawString(margem_h, 55 * mm, "Overpack used")
-        # ---------------------------------------------------------------
+        c.drawString(margem_h, 70 * mm, "Overpack used")
+        # -------------------------------------------------------------------------------
         
         # Textos das etiquetas
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
@@ -82,19 +81,19 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_data = Paragraph(data_text, style_normal)
         
-        # Distribuição de baixo para cima calibrada para a folha de 100mm de altura
+        # Distribuição milimétrica aproveitando os 15mm extras de folga vertical:
         
-        # 1. EXPEDIDOR (Abaixo do Overpack used com folga)
+        # 1. EXPEDIDOR (Alocado perfeitamente abaixo de Overpack Used com ótimo respiro)
         p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
-        p_expedidor.drawOn(c, margem_h, 28 * mm)
+        p_expedidor.drawOn(c, margem_h, 40 * mm)
         
-        # 2. RECEBEDOR (Afastado no centro inferior)
+        # 2. RECEBEDOR (Espaçado confortavelmente no centro inferior)
         p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
-        p_recebedor.drawOn(c, margem_h, 12 * mm)
+        p_recebedor.drawOn(c, margem_h, 20 * mm)
         
-        # 3. DATA DE EXPEDIÇÃO (Fica isolada perfeitamente na base do rodapé)
+        # 3. DATA DE EXPEDIÇÃO (Fixada elegantemente no rodapé da folha)
         p_data.wrapOn(c, largura_maxima, 8 * mm)
-        p_data.drawOn(c, margem_h, 4 * mm)
+        p_data.drawOn(c, margem_h, 6 * mm)
         
         c.showPage()
         
