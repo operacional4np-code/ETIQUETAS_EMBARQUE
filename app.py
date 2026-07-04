@@ -20,22 +20,21 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=(100 * mm, 100 * mm))
     styles = getSampleStyleSheet()
-    
-    # Estilo compacto e preciso para caber na etiqueta de 100x100mm
     style_normal = ParagraphStyle('Normal', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
     
     for i in range(1, quantidade + 1):
-        # 1. CÓDIGO (CWB) e Nº SACA (Aumentei um pouco a margem superior do layout)
+        # --- MARGEM SUPERIOR AUMENTADA: Descemos tudo em relação ao topo ---
+        # Cabeçalho desceu de 88mm para 84mm
         c.setFont('Helvetica-Bold', 36)
-        c.drawString(4*mm, 88*mm, sigla)
-        c.drawString(78*mm, 88*mm, f"#{i}")
+        c.drawString(4*mm, 84*mm, sigla)
+        c.drawString(78*mm, 84*mm, f"#{i}")
         
-        # 2. OVERPACK USED (Fonte ajustada para 38 e margem superior aumentada)
+        # Overpack (Fonte 38) - Descemos de 74/62 para 70/58
         c.setFont('Helvetica-Bold', 38)
-        c.drawString(4*mm, 74*mm, "OVERPACK")
-        c.drawString(4*mm, 62*mm, "USED")
+        c.drawString(4*mm, 70*mm, "OVERPACK")
+        c.drawString(4*mm, 58*mm, "USED")
         
-        # 3. BLOCOS DE TEXTO (Posicionamento recalculado para manter a organização)
+        # Textos (Expedidor e Recebedor) - Ajustados para acompanhar a descida
         exp_texto = (
             "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - "
             "JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 "
@@ -49,13 +48,13 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados):
         
         p1 = Paragraph(exp_texto, style_normal)
         p1.wrapOn(c, 92*mm, 30*mm)
-        p1.drawOn(c, 4*mm, 38*mm) # Ajustado para descer conforme a nova margem
+        p1.drawOn(c, 4*mm, 34*mm) 
         
         p2 = Paragraph(rec_texto, style_normal)
         p2.wrapOn(c, 92*mm, 20*mm)
-        p2.drawOn(c, 4*mm, 18*mm)
+        p2.drawOn(c, 4*mm, 15*mm)
         
-        # 4. Data de Expedição
+        # Data de Expedição
         c.setFont('Helvetica', 8)
         c.drawString(4*mm, 6*mm, f"DATA DE EXPEDIÇÃO: {datetime.now().strftime('%d/%m/%Y')}")
         
