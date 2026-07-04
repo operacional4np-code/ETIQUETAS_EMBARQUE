@@ -40,11 +40,11 @@ def salvar_dataframe(df):
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Retornando ao tamanho oficial de 150mm x 100mm solicitado na referência
+    # Tamanho exato padrão da referência: 150mm x 100mm
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
-    # Estilo padrão para os blocos de texto (Expedidor e Recebedor)
+    # Estilo dos blocos de dados
     style_normal = ParagraphStyle(
         name='EtiquetaNormal', 
         parent=styles['Normal'], 
@@ -54,13 +54,13 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         alignment=TA_LEFT
     )
     
-    # Estilo específico para o "OVERPACK USED" quebrado em duas linhas igual à referência
+    # Estilo do Overpack em duas linhas idêntico ao modelo
     style_overpack = ParagraphStyle(
         name='EtiquetaOverpack',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=24,
-        leading=26,
+        fontSize=22,
+        leading=24,
         alignment=TA_LEFT
     )
     
@@ -71,21 +71,21 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         largura_maxima = 138 * mm
         
         # 1. SIGLA DO DESTINO (Ex: CWB) - Topo Esquerdo
-        c.setFont('Helvetica-Bold', 52)
+        c.setFont('Helvetica-Bold', 54)
         c.drawString(margem_h, 76 * mm, sigla)
         
-        # 2. NÚMERO DA SACA (Ex: #1) - Topo Direito (Alinhado com a referência)
+        # 2. OVERPACK USED - Abaixo da Sigla (Em duas linhas, caixa alta)
+        p_overpack = Paragraph("OVERPACK<br/>USED", style_overpack)
+        p_overpack.wrapOn(c, 80 * mm, 20 * mm)
+        p_overpack.drawOn(c, margem_h, 50 * mm)
+        
+        # 3. NÚMERO DA SACA (Ex: #1) - Lado Direito, alinhado horizontalmente com o Overpack
         numero_str = f"#{i}"
         c.setFont('Helvetica-Bold', 44)
         largura_texto_num = c.stringWidth(numero_str, 'Helvetica-Bold', 44)
-        c.drawString((150 * mm) - margem_h - largura_texto_num, 54 * mm, numero_str)
+        c.drawString((150 * mm) - margem_h - largura_texto_num, 50 * mm, numero_str)
         
-        # 3. OVERPACK USED (Em duas linhas, tamanho correto, abaixo da Sigla)
-        p_overpack = Paragraph("OVERPACK<br/>USED", style_overpack)
-        p_overpack.wrapOn(c, 90 * mm, 20 * mm)
-        p_overpack.drawOn(c, margem_h, 52 * mm)
-        
-        # Textos dos blocos de dados
+        # Montagem dos textos estruturados
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
@@ -94,15 +94,15 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_data = Paragraph(data_text, style_normal)
         
-        # 4. EXPEDIDOR (Posicionado perfeitamente na metade da folha)
-        p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
-        p_expedidor.drawOn(c, margem_h, 30 * mm)
+        # 4. EXPEDIDOR (Centralizado verticalmente na folha)
+        p_expedidor.wrapOn(c, largura_maxima, 16 * mm)
+        p_expedidor.drawOn(c, margem_h, 32 * mm)
         
-        # 5. RECEBEDOR (Espaçamento ideal e idêntico ao modelo)
-        p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
-        p_recebedor.drawOn(c, margem_h, 14 * mm)
+        # 5. RECEBEDOR (Alinhado com folga abaixo do Expedidor)
+        p_recebedor.wrapOn(c, largura_maxima, 16 * mm)
+        p_recebedor.drawOn(c, margem_h, 15 * mm)
         
-        # 6. DATA DE EXPEDIÇÃO (Rodapé isolado)
+        # 6. DATA DE EXPEDIÇÃO (Isolada na última linha da base)
         p_data.wrapOn(c, largura_maxima, 6 * mm)
         p_data.drawOn(c, margem_h, 5 * mm)
         
