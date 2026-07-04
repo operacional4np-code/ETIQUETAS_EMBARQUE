@@ -36,43 +36,56 @@ def carregar_dataframe():
 def salvar_dataframe(df):
     df.to_csv(CSV_PATH, index=False, sep=';')
 
-# --- GERAÇÃO DA ETIQUETA EM 150mm x 115mm ---
+# --- GERAÇÃO DA ETIQUETA EM 150mm x 100mm ---
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Aumentamos a altura de 100mm para 115mm para dar o espaço necessário
-    c = canvas.Canvas(buffer, pagesize=(150 * mm, 115 * mm))
+    # Retornando ao tamanho oficial de 150mm x 100mm solicitado na referência
+    c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
+    # Estilo padrão para os blocos de texto (Expedidor e Recebedor)
     style_normal = ParagraphStyle(
         name='EtiquetaNormal', 
         parent=styles['Normal'], 
         fontName='Helvetica', 
-        fontSize=11, 
-        leading=13, 
+        fontSize=10, 
+        leading=12, 
+        alignment=TA_LEFT
+    )
+    
+    # Estilo específico para o "OVERPACK USED" quebrado em duas linhas igual à referência
+    style_overpack = ParagraphStyle(
+        name='EtiquetaOverpack',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=24,
+        leading=26,
         alignment=TA_LEFT
     )
     
     data_atual = datetime.now().strftime("%d/%m/%Y")
     
     for i in range(1, quantidade + 1):
-        margem_h = 5 * mm
-        largura_maxima = 140 * mm
+        margem_h = 6 * mm
+        largura_maxima = 138 * mm
         
-        # --- Cabeçalho Original (Agora posicionado no topo da nova altura de 115mm) ---
-        c.setFont('Helvetica-Bold', 56)
-        c.drawString(margem_h, 90 * mm, sigla)
+        # 1. SIGLA DO DESTINO (Ex: CWB) - Topo Esquerdo
+        c.setFont('Helvetica-Bold', 52)
+        c.drawString(margem_h, 76 * mm, sigla)
         
+        # 2. NÚMERO DA SACA (Ex: #1) - Topo Direito (Alinhado com a referência)
         numero_str = f"#{i}"
-        c.setFont('Helvetica-Bold', 49)
-        largura_texto_num = c.stringWidth(numero_str, 'Helvetica-Bold', 49)
-        c.drawString((150 * mm) - margem_h - largura_texto_num, 90 * mm, numero_str)
+        c.setFont('Helvetica-Bold', 44)
+        largura_texto_num = c.stringWidth(numero_str, 'Helvetica-Bold', 44)
+        c.drawString((150 * mm) - margem_h - largura_texto_num, 54 * mm, numero_str)
         
-        c.setFont('Helvetica-Bold', 46)
-        c.drawString(margem_h, 70 * mm, "Overpack used")
-        # -------------------------------------------------------------------------------
+        # 3. OVERPACK USED (Em duas linhas, tamanho correto, abaixo da Sigla)
+        p_overpack = Paragraph("OVERPACK<br/>USED", style_overpack)
+        p_overpack.wrapOn(c, 90 * mm, 20 * mm)
+        p_overpack.drawOn(c, margem_h, 52 * mm)
         
-        # Textos das etiquetas
+        # Textos dos blocos de dados
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
@@ -81,19 +94,17 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_data = Paragraph(data_text, style_normal)
         
-        # Distribuição milimétrica aproveitando os 15mm extras de folga vertical:
-        
-        # 1. EXPEDIDOR (Alocado perfeitamente abaixo de Overpack Used com ótimo respiro)
+        # 4. EXPEDIDOR (Posicionado perfeitamente na metade da folha)
         p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
-        p_expedidor.drawOn(c, margem_h, 40 * mm)
+        p_expedidor.drawOn(c, margem_h, 30 * mm)
         
-        # 2. RECEBEDOR (Espaçado confortavelmente no centro inferior)
+        # 5. RECEBEDOR (Espaçamento ideal e idêntico ao modelo)
         p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
-        p_recebedor.drawOn(c, margem_h, 20 * mm)
+        p_recebedor.drawOn(c, margem_h, 14 * mm)
         
-        # 3. DATA DE EXPEDIÇÃO (Fixada elegantemente no rodapé da folha)
-        p_data.wrapOn(c, largura_maxima, 8 * mm)
-        p_data.drawOn(c, margem_h, 6 * mm)
+        # 6. DATA DE EXPEDIÇÃO (Rodapé isolado)
+        p_data.wrapOn(c, largura_maxima, 6 * mm)
+        p_data.drawOn(c, margem_h, 5 * mm)
         
         c.showPage()
         
