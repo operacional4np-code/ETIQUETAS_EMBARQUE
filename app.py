@@ -7,7 +7,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Paragraph, Spacer, KeepTogether
+from reportlab.platypus import Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT
 
@@ -45,11 +45,11 @@ def carregar_dataframe():
 def salvar_dataframe(df):
     df.to_csv(CSV_PATH, index=False, sep=';')
 
-# --- GERAÇÃO DA ETIQUETA CORRIGIDA (150mm x 100mm) ---
+# --- GERAÇÃO DA ETIQUETA COM DISTRIBUIÇÃO CORRETA (150mm x 100mm) ---
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Define o tamanho exato da página solicitado: 150mm x 100mm
+    # Tamanho correto da folha: 150mm x 100mm
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
@@ -61,7 +61,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         parent=styles['Normal'], 
         fontName=font_name, 
         fontSize=11,       
-        leading=14,        
+        leading=14,        # Espaçamento entre linhas do mesmo bloco
         alignment=TA_LEFT
     )
     
@@ -85,31 +85,26 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         c.setFont(font_bold, 46)
         c.drawString(margem_h, 55 * mm, "Overpack used")
         
-        # Textos estruturados
+        # Textos organizados
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
         
-        # Criando os parágrafos
         p_expedidor = Paragraph(expedidor_text, style_normal)
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_data = Paragraph(data_text, style_normal)
         
-        # Empilhando dinamicamente para respeitar o tamanho do texto sem encavalar
-        elementos = [
-            p_expedidor,
-            Spacer(1, 4 * mm),  # Espaço nítido entre Expedidor e Recebedor
-            p_recebedor,
-            Spacer(1, 4 * mm),  # Espaço nítido entre Recebedor e Data
-            p_data
-        ]
+        # 4. Desenha EXPEDIDOR (Subiu para 39mm para não bater no de baixo)
+        p_expedidor.wrapOn(c, largura_maxima, 25 * mm)
+        p_expedidor.drawOn(c, margem_h, 39 * mm)
         
-        # Monta o bloco combinado
-        bloco_texto = KeepTogether(elementos)
+        # 5. Desenha RECEBEDOR (Afastado no centro, em 17mm)
+        p_recebedor.wrapOn(c, largura_maxima, 25 * mm)
+        p_recebedor.drawOn(c, margem_h, 17 * mm)
         
-        # Desenha o bloco completo a partir de 5mm do rodapé (garantindo a data na última linha)
-        bloco_texto.wrapOn(c, largura_maxima, 45 * mm)
-        bloco_texto.drawOn(c, margem_h, 5 * mm)
+        # 6. Desenha DATA DE EXPEDIÇÃO (Isolada e colada na última linha do rodapé)
+        p_data.wrapOn(c, largura_maxima, 10 * mm)
+        p_data.drawOn(c, margem_h, 5 * mm)
         
         c.showPage()
         
@@ -141,8 +136,6 @@ with aba_gerar:
 
         if botao_preparar:
             dados_recebedor = destinos_dict[sigla_selecionada]
-            
-            # Executa a geração limpa sem variáveis fantasmas
             pdf_buffer = gerar_etiquetas_pdf(sigla_selecionada, quantidade_sacas, dados_recebedor)
             
             st.success(f"Etiquetas para {sigla_selecionada} geradas com sucesso!")
