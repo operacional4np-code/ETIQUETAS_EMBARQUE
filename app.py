@@ -152,4 +152,4 @@ with aba_admin:
     with st.expander("➕ Cadastrar Novo Aeroporto/Destino"):
         with st.form("form_novo_destino", clear_on_submit=True):
             col1, col2 = st.columns(2)
-            with col1
+            with col1:
