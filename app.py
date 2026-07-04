@@ -142,4 +142,55 @@ with aba_gerar:
             st.download_button(
                 label="📥 Baixar Etiquetas (PDF)",
                 data=pdf_buffer,
-                file_name=f"etiquetas_{sig}
+                file_name=f"etiquetas_{sigla_selecionada}.pdf",
+                mime="application/pdf"
+            )
+
+with aba_admin:
+    st.subheader("Gerenciar Dados dos Recebedores")
+    
+    with st.expander("➕ Cadastrar Novo Aeroporto/Destino"):
+        with st.form("form_novo_destino", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+            with col1:
+                nova_sigla = st.text_input("Sigla (Ex: CWB):").upper().strip()
+                nome_recebedor = st.text_input("Nome do Recebedor:")
+                cnpj_recebedor = st.text_input("CNPJ:")
+                endereco_recebedor = st.text_input("Endereço:")
+            with col2:
+                cidade_recebedor = st.text_input("Município/Cidade:")
+                uf_recebedor = st.text_input("UF:").upper().strip()
+                cep_recebedor = st.text_input("CEP:")
+                pais_recebedor = st.text_input("País:", value="BRASIL")
+            
+            botao_salvar = st.form_submit_button("Salvar")
+            
+            if botao_salvar:
+                if not nova_sigla:
+                    st.error("A sigla é obrigatória!")
+                elif nova_sigla in destinos_dict:
+                    st.error(f"A sigla {nova_sigla} já existe!")
+                else:
+                    novo_registro = pd.DataFrame([{
+                        'sigla': nova_sigla, 'nome_recebedor': nome_recebedor, 'cnpj_recebedor': cnpj_recebedor,
+                        'endereco_recebedor': endereco_recebedor, 'cidade_recebedor': cidade_recebedor,
+                        'uf_recebedor': uf_recebedor, 'cep_recebedor': cep_recebedor, 'pais_recebedor': pais_recebedor
+                    }])
+                    df_atualizado = pd.concat([df_destinos, novo_registro], ignore_index=True)
+                    salvar_dataframe(df_atualizado)
+                    st.success(f"Destino {nova_sigla} adicionado!")
+                    st.rerun()
+
+    st.write("### Destinos Salvos")
+    if df_destinos.empty:
+        st.write("Nenhum item encontrado.")
+    else:
+        st.dataframe(df_destinos.set_index('sigla'), use_container_width=True)
+        st.write("---")
+        sigla_para_remover = st.selectbox("Remover Destino:", [""] + list(destinos_dict.keys()))
+        if sigla_para_remover:
+            if st.button(f"Confirmar Exclusão de {sigla_para_remover}"):
+                df_restante = df_destinos[df_destinos.sigla != sigla_para_remover]
+                salvar_dataframe(df_restante)
+                st.success(f"{sigla_para_remover} removido.")
+                st.rerun()
