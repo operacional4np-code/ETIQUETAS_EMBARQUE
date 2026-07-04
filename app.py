@@ -7,7 +7,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Paragraph
+from reportlab.platypus import Paragraph, Spacer, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT
 
@@ -45,11 +45,11 @@ def carregar_dataframe():
 def salvar_dataframe(df):
     df.to_csv(CSV_PATH, index=False, sep=';')
 
-# --- GERAÇÃO DA ETIQUETA COM DISTRIBUIÇÃO CORRETA (150mm x 100mm) ---
+# --- GERAÇÃO DA ETIQUETA CORRIGIDA (150mm x 100mm) ---
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Tamanho padrão: 150mm x 100mm
+    # Define o tamanho exato da página solicitado: 150mm x 100mm
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
@@ -61,7 +61,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         parent=styles['Normal'], 
         fontName=font_name, 
         fontSize=11,       
-        leading=14,        # Aumentado levemente para melhor leitura das linhas
+        leading=14,        
         alignment=TA_LEFT
     )
     
@@ -90,20 +90,26 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
         
-        # 4. Desenha EXPEDIDOR (Subiu para 38mm para abrir espaço)
+        # Criando os parágrafos
         p_expedidor = Paragraph(expedidor_text, style_normal)
-        p_expedidor.wrapOn(c, largura_maxima, 25 * mm)
-        p_expedidor.drawOn(c, margem_h, 38 * mm)
-        
-        # 5. Desenha RECEBEDOR (Posicionado em 16mm, perfeitamente distante do de cima)
         p_recebedor = Paragraph(recebedor_text, style_normal)
-        p_recebedor.wrapOn(c, largura_maxima, 25 * mm)
-        p_recebedor.drawOn(c, margem_h, 16 * mm)
-        
-        # 6. Desenha DATA DE EXPEDIÇÃO (Isolada na última linha do rodapé)
         p_data = Paragraph(data_text, style_normal)
-        p_data.wrapOn(c, largura_maxima, 10 * mm)
-        p_data.drawOn(c, margem_h, 4 * mm)
+        
+        # Empilhando dinamicamente para respeitar o tamanho do texto sem encavalar
+        elementos = [
+            p_expedidor,
+            Spacer(1, 4 * mm),  # Espaço nítido entre Expedidor e Recebedor
+            p_recebedor,
+            Spacer(1, 4 * mm),  # Espaço nítido entre Recebedor e Data
+            p_data
+        ]
+        
+        # Monta o bloco combinado
+        bloco_texto = KeepTogether(elementos)
+        
+        # Desenha o bloco completo a partir de 5mm do rodapé (garantindo a data na última linha)
+        bloco_texto.wrapOn(c, largura_maxima, 45 * mm)
+        bloco_texto.drawOn(c, margem_h, 5 * mm)
         
         c.showPage()
         
@@ -121,4 +127,77 @@ destinos_dict = df_destinos.set_index('sigla').to_dict('index')
 
 aba_gerar, aba_admin = st.tabs(["📄 Gerar Etiquetas", "⚙️ Configurar Aeroportos/Destinos"])
 
-with
+with aba_gerar:
+    st.write("Insira as informações abaixo para gerar o PDF:")
+    opcoes_destinos = list(destinos_dict.keys())
+    
+    if not opcoes_destinos:
+        st.info("Nenhum destino configurado. Acesse a aba ao lado para cadastrar.")
+    else:
+        with st.form("form_geracao"):
+            sigla_selecionada = st.selectbox("Destino:", opcoes_destinos)
+            quantidade_sacas = st.number_input("Quantidade de Sacas:", min_value=1, value=1, step=1)
+            botao_preparar = st.form_submit_button("Gerar Etiquetas")
+
+        if botao_preparar:
+            dados_recebedor = destinos_dict[sigla_selecionada]
+            
+            # Executa a geração limpa sem variáveis fantasmas
+            pdf_buffer = gerar_etiquetas_pdf(sigla_selecionada, quantidade_sacas, dados_recebedor)
+            
+            st.success(f"Etiquetas para {sigla_selecionada} geradas com sucesso!")
+            st.download_button(
+                label="📥 Baixar Etiquetas (PDF)",
+                data=pdf_buffer,
+                file_name=f"etiquetas_{sigla_selecionada}.pdf",
+                mime="application/pdf"
+            )
+
+with aba_admin:
+    st.subheader("Gerenciar Dados dos Recebedores")
+    
+    with st.expander("➕ Cadastrar Novo Aeroporto/Destino"):
+        with st.form("form_novo_destino", clear_on_submit=True):
+            col1, col2 = st.columns(2)
+            with col1:
+                nova_sigla = st.text_input("Sigla (Ex: CWB):").upper().strip()
+                nome_recebedor = st.text_input("Nome do Recebedor:")
+                cnpj_recebedor = st.text_input("CNPJ:")
+                endereco_recebedor = st.text_input("Endereço:")
+            with col2:
+                cidade_recebedor = st.text_input("Município/Cidade:")
+                uf_recebedor = st.text_input("UF:").upper().strip()
+                cep_recebedor = st.text_input("CEP:")
+                pais_recebedor = st.text_input("País:", value="BRASIL")
+            
+            botao_salvar = st.form_submit_button("Salvar")
+            
+            if botao_salvar:
+                if not nova_sigla:
+                    st.error("A sigla é obrigatória!")
+                elif nova_sigla in destinos_dict:
+                    st.error(f"A sigla {nova_sigla} já existe!")
+                else:
+                    novo_registro = pd.DataFrame([{
+                        'sigla': nova_sigla, 'nome_recebedor': nome_recebedor, 'cnpj_recebedor': cnpj_recebedor,
+                        'endereco_recebedor': endereco_recebedor, 'cidade_recebedor': cidade_recebedor,
+                        'uf_recebedor': uf_recebedor, 'cep_recebedor': cep_recebedor, 'pais_recebedor': pais_recebedor
+                    }])
+                    df_atualizado = pd.concat([df_destinos, novo_registro], ignore_index=True)
+                    salvar_dataframe(df_atualizado)
+                    st.success(f"Destino {nova_sigla} adicionado!")
+                    st.rerun()
+
+    st.write("### Destinos Salvos")
+    if df_destinos.empty:
+        st.write("Nenhum item encontrado.")
+    else:
+        st.dataframe(df_destinos.set_index('sigla'), use_container_width=True)
+        st.write("---")
+        sigla_para_remover = st.selectbox("Remover Destino:", [""] + list(destinos_dict.keys()))
+        if sigla_para_remover:
+            if st.button(f"Confirmar Exclusão de {sigla_para_remover}"):
+                df_restante = df_destinos[df_destinos.sigla != sigla_para_remover]
+                salvar_dataframe(df_restante)
+                st.success(f"{sigla_para_remover} removido.")
+                st.rerun()
