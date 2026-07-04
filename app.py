@@ -45,11 +45,11 @@ def carregar_dataframe():
 def salvar_dataframe(df):
     df.to_csv(CSV_PATH, index=False, sep=';')
 
-# --- GERAÇÃO DA ETIQUETA COM ESPAÇAMENTO AJUSTADO (150mm x 100mm) ---
+# --- GERAÇÃO DA ETIQUETA COM ESPAÇAMENTO PERFEITO (150mm x 100mm) ---
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Tamanho da página original: 150mm por 100mm
+    # Tamanho oficial da página: 150mm de largura por 100mm de altura
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
@@ -71,7 +71,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         margem_h = 5 * mm
         largura_maxima = 140 * mm
         
-        # 1. Sigla do Destino
+        # 1. Sigla do Destino (Ex: CWB)
         c.setFont(font_bold, 56)
         c.drawString(margem_h, 75 * mm, sigla)
         
@@ -81,29 +81,27 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         largura_texto_num = c.stringWidth(numero_str, font_bold, 49)
         c.drawString((150 * mm) - margem_h - largura_texto_num, 75 * mm, numero_str)
         
-        # 3. Overpack used em uma única linha como no Render
+        # 3. Textos principais (idêntico ao modelo original)
         c.setFont(font_bold, 46)
         c.drawString(margem_h, 55 * mm, "Overpack used")
         
-        # Textos dos blocos
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
         
-        # 4. Desenha EXPEDIDOR (Inicia em 32mm de altura)
+        # 4. Bloco EXPEDIDOR (Inicia em 36mm de altura)
         p_expedidor = Paragraph(expedidor_text, style_normal)
         p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
-        p_expedidor.drawOn(c, margem_h, 32 * mm)
+        p_expedidor.drawOn(c, margem_h, 36 * mm)
         
-        # 5. Desenha RECEBEDOR (Inicia em 14mm de altura, deixando espaço visível do expedidor)
+        # 5. Bloco RECEBEDOR (Inicia em 18mm de altura, gerando o espaço de respiro)
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_recebedor.wrapOn(c, largura_maxima, 15 * mm)
-        p_recebedor.drawOn(c, margem_h, 14 * mm)
+        p_recebedor.drawOn(c, margem_h, 18 * mm)
         
-        # 6. Desenha DATA DE EXPEDIÇÃO (Isolada na última linha, a 5mm de altura da borda)
+        # 6. Bloco DATA DE EXPEDIÇÃO (Fica isolado e fixado na última linha a 5mm da base)
         p_data = Paragraph(data_text, style_normal)
         p_data.wrapOn(c, largura_maxima, 8 * mm)
-        c.setFont(font_bold, 11) # Força o negrito na data se necessário
         p_data.drawOn(c, margem_h, 5 * mm)
         
         c.showPage()
@@ -136,6 +134,8 @@ with aba_gerar:
 
         if botao_preparar:
             dados_recebedor = destinos_dict[sigla_selecionada]
+            
+            # CORREÇÃO DO ERRO DA IMAGEM: Passando os argumentos limpos
             pdf_buffer = gerar_etiquetas_pdf(sigla_selecionada, quantidade_sacas, dados_recebedor)
             
             st.success(f"Etiquetas para {sigla_selecionada} geradas com sucesso!")
@@ -153,3 +153,44 @@ with aba_admin:
         with st.form("form_novo_destino", clear_on_submit=True):
             col1, col2 = st.columns(2)
             with col1:
+                nova_sigla = st.text_input("Sigla (Ex: CWB):").upper().strip()
+                nome_recebedor = st.text_input("Nome do Recebedor:")
+                cnpj_recebedor = st.text_input("CNPJ:")
+                endereco_recebedor = st.text_input("Endereço:")
+            with col2:
+                cidade_recebedor = st.text_input("Município/Cidade:")
+                uf_recebedor = st.text_input("UF:").upper().strip()
+                cep_recebedor = st.text_input("CEP:")
+                pais_recebedor = st.text_input("País:", value="BRASIL")
+            
+            botao_salvar = st.form_submit_button("Salvar")
+            
+            if botao_salvar:
+                if not nova_sigla:
+                    st.error("A sigla é obrigatória!")
+                elif nova_sigla in destinos_dict:
+                    st.error(f"A sigla {nova_sigla} já existe!")
+                else:
+                    novo_registro = pd.DataFrame([{
+                        'sigla': nova_sigla, 'nome_recebedor': nome_recebedor, 'cnpj_recebedor': cnpj_recebedor,
+                        'endereco_recebedor': endereco_recebedor, 'cidade_recebedor': cidade_recebedor,
+                        'uf_recebedor': uf_recebedor, 'cep_recebedor': cep_recebedor, 'pais_recebedor': pais_recebedor
+                    }])
+                    df_atualizado = pd.concat([df_destinos, novo_registro], ignore_index=True)
+                    salvar_dataframe(df_atualizado)
+                    st.success(f"Destino {nova_sigla} adicionado!")
+                    st.rerun()
+
+    st.write("### Destinos Salvos")
+    if df_destinos.empty:
+        st.write("Nenhum item encontrado.")
+    else:
+        st.dataframe(df_destinos.set_index('sigla'), use_container_width=True)
+        st.write("---")
+        sigla_para_remover = st.selectbox("Remover Destino:", [""] + list(destinos_dict.keys()))
+        if sigla_para_remover:
+            if st.button(f"Confirmar Exclusão de {sigla_para_remover}"):
+                df_restante = df_destinos[df_destinos.sigla != sigla_para_remover]
+                salvar_dataframe(df_restante)
+                st.success(f"{sigla_para_remover} removido.")
+                st.rerun()
