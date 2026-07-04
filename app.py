@@ -30,7 +30,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados):
         c.drawString(78*mm, 85*mm, f"#{i}")
         
         # 2. OVERPACK USED - Fonte 40 (Desenhado fixo)
-        c.setFont('Helvetica-Bold', 46)
+        c.setFont('Helvetica-Bold', 40)
         c.drawString(4*mm, 68*mm, "OVERPACK")
         c.drawString(4*mm, 52*mm, "USED")
         
