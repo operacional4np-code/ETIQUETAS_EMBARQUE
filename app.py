@@ -142,4 +142,4 @@ with aba_gerar:
             st.download_button(
                 label="📥 Baixar Etiquetas (PDF)",
                 data=pdf_buffer,
-                file_name=f"etiquetas_{sig
+                file_name=f"etiquetas_{sig}
