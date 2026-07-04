@@ -7,7 +7,8 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Paragraph
+# Forçamos a importação com um nome exclusivo para evitar qualquer conflito na memória
+from reportlab.platypus import Paragraph as PlatypusParagraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT
 
@@ -49,11 +50,11 @@ def salvar_dataframe(df):
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Define o tamanho de página solicitado: 150mm x 100mm
+    # Tamanho exato padrão: 150mm x 100mm
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
-    # Criando o estilo normal com a fonte Arial correta
+    # Configuração de estilo normal com fonte Arial
     style_normal = ParagraphStyle(
         name='EtiquetaNormal', 
         parent=styles['Normal'], 
@@ -69,7 +70,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         margem_h = 5 * mm
         largura_maxima = 140 * mm
         
-        # --- Estrutura Original do Cabeçalho ---
+        # --- Estrutura de Cabeçalho enviada por si ---
         c.setFont('Arial-Bold', 56)
         c.drawString(margem_h, 75 * mm, sigla)
         
@@ -80,30 +81,30 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         
         c.setFont('Arial-Bold', 46)
         c.drawString(margem_h, 55 * mm, "Overpack used")
-        # ---------------------------------------
+        # -----------------------------------------------
         
-        # Textos completos
+        # Textos estruturados
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
         
-        # Criando os objetos Paragraph usando a classe do Platypus importada no topo
-        p_expedidor = Paragraph(expedidor_text, style_normal)
-        p_recebedor = Paragraph(recebedor_text, style_normal)
-        p_data = Paragraph(data_text, style_normal)
+        # Criamos os blocos usando o objeto PlatypusParagraph blindado
+        p_expedidor = PlatypusParagraph(expedidor_text, style_normal)
+        p_recebedor = PlatypusParagraph(recebedor_text, style_normal)
+        p_data = PlatypusParagraph(data_text, style_normal)
         
-        # Coordenadas calculadas de baixo para cima para garantir espaçamento e evitar sumiço:
+        # Coordenadas seguras calculadas de baixo para cima na folha de 100mm de altura:
         
-        # 1. EXPEDIDOR (Posicionado abaixo do Overpack used com folga)
+        # 1. EXPEDIDOR (Alocado com folga suficiente abaixo do 'Overpack used')
         p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
-        p_expedidor.drawOn(c, margem_h, 30 * mm)
+        p_expedidor.drawOn(c, margem_h, 28 * mm)
         
-        # 2. RECEBEDOR (Alocado com espaço seguro no centro inferior)
-        p_recebedor.wrapOn(c, largura_maxima, 15 * mm)
-        p_recebedor.drawOn(c, margem_h, 14 * mm)
+        # 2. RECEBEDOR (Afastado e bem distribuído abaixo do Expedidor)
+        p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
+        p_recebedor.drawOn(c, margem_h, 12 * mm)
         
-        # 3. DATA DE EXPEDIÇÃO (Fica isolada no rodapé da folha)
-        p_data.wrapOn(c, largura_maxima, 5 * mm)
+        # 3. DATA DE EXPEDIÇÃO (Isolada perfeitamente na última linha do rodapé)
+        p_data.wrapOn(c, largura_maxima, 8 * mm)
         p_data.drawOn(c, margem_h, 4 * mm)
         
         c.showPage()
