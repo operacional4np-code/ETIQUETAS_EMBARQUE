@@ -23,18 +23,22 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados):
     style_normal = ParagraphStyle('Normal', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
     
     for i in range(1, quantidade + 1):
-        # --- MARGEM SUPERIOR AUMENTADA: Descemos tudo em relação ao topo ---
-        # Cabeçalho desceu de 88mm para 84mm
+        # 1. Cabeçalho com alinhamento rigoroso
         c.setFont('Helvetica-Bold', 36)
         c.drawString(4*mm, 84*mm, sigla)
-        c.drawString(78*mm, 84*mm, f"#{i}")
         
-        # Overpack (Fonte 36) - Descemos de 74/62 para 70/58
-        c.setFont('Helvetica-Bold', 36)
+        # ALINHAMENTO DO NÚMERO DA SACA:
+        # Usamos o cálculo de largura para que o '#' comece exatamente na margem direita de 4mm
+        numero_str = f"#{i}"
+        largura_num = c.stringWidth(numero_str, 'Helvetica-Bold', 36)
+        c.drawString((100 * mm) - 4 * mm - largura_num, 84 * mm, numero_str)
+        
+        # 2. Overpack (Fonte 38)
+        c.setFont('Helvetica-Bold', 38)
         c.drawString(4*mm, 70*mm, "OVERPACK")
         c.drawString(4*mm, 58*mm, "USED")
         
-        # Textos (Expedidor e Recebedor) - Ajustados para acompanhar a descida
+        # 3. Textos (Mantendo a estrutura)
         exp_texto = (
             "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - "
             "JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 "
@@ -54,7 +58,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados):
         p2.wrapOn(c, 92*mm, 20*mm)
         p2.drawOn(c, 4*mm, 15*mm)
         
-        # Data de Expedição
+        # 4. Data
         c.setFont('Helvetica', 8)
         c.drawString(4*mm, 6*mm, f"DATA DE EXPEDIÇÃO: {datetime.now().strftime('%d/%m/%Y')}")
         
