@@ -45,18 +45,17 @@ def carregar_dataframe():
 def salvar_dataframe(df):
     df.to_csv(CSV_PATH, index=False, sep=';')
 
-# --- GERAÇÃO DA ETIQUETA COM MEDIDAS EXATAS ---
+# --- GERAÇÃO DA ETIQUETA COM ESPAÇAMENTO AJUSTADO (150mm x 100mm) ---
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # MEDIDA EXATA DO SEU MODELO ORIGINAL: 150mm de largura por 100mm de altura
+    # Tamanho da página original: 150mm por 100mm
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
     font_name = 'Arial' if 'Arial' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
     font_bold = 'Arial-Bold' if 'Arial-Bold' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold'
     
-    # Tamanho de fonte 11 e leading 13 idênticos ao script original
     style_normal = ParagraphStyle(
         name='Normal', 
         parent=styles['Normal'], 
@@ -72,42 +71,39 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         margem_h = 5 * mm
         largura_maxima = 140 * mm
         
-        # 1. Sigla do Destino (Tamanho 56)
+        # 1. Sigla do Destino
         c.setFont(font_bold, 56)
         c.drawString(margem_h, 75 * mm, sigla)
         
-        # 2. Número da Saca (Tamanho 49)
+        # 2. Número da Saca (#1, #2...)
         numero_str = f"#{i}"
         c.setFont(font_bold, 49)
         largura_texto_num = c.stringWidth(numero_str, font_bold, 49)
         c.drawString((150 * mm) - margem_h - largura_texto_num, 75 * mm, numero_str)
         
-        # 3. OVERPACK USED (Tamanho 46)
+        # 3. Overpack used em uma única linha como no Render
         c.setFont(font_bold, 46)
         c.drawString(margem_h, 55 * mm, "Overpack used")
         
-        # 4. Texto do Expedidor (Original, sem a data misturada)
+        # Textos dos blocos
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
-        
-        # 5. Texto do Recebedor (Original)
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
-        
-        # 6. Texto da Data de Expedição (Para a última linha da etiqueta)
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
         
-        # Desenha o Expedidor na posição exata de 28mm de altura
+        # 4. Desenha EXPEDIDOR (Inicia em 32mm de altura)
         p_expedidor = Paragraph(expedidor_text, style_normal)
-        p_expedidor.wrapOn(c, largura_maxima, 40 * mm)
-        p_expedidor.drawOn(c, margem_h, 28 * mm)
+        p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
+        p_expedidor.drawOn(c, margem_h, 32 * mm)
         
-        # Desenha o Recebedor posicionado um pouco acima (13mm de altura) para dar espaço para a data
+        # 5. Desenha RECEBEDOR (Inicia em 14mm de altura, deixando espaço visível do expedidor)
         p_recebedor = Paragraph(recebedor_text, style_normal)
-        p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
-        p_recebedor.drawOn(c, margem_h, 13 * mm)
+        p_recebedor.wrapOn(c, largura_maxima, 15 * mm)
+        p_recebedor.drawOn(c, margem_h, 14 * mm)
         
-        # Desenha a Data de Expedição isolada na última linha (na base de 5mm de altura)
+        # 6. Desenha DATA DE EXPEDIÇÃO (Isolada na última linha, a 5mm de altura da borda)
         p_data = Paragraph(data_text, style_normal)
-        p_data.wrapOn(c, largura_maxima, 10 * mm)
+        p_data.wrapOn(c, largura_maxima, 8 * mm)
+        c.setFont(font_bold, 11) # Força o negrito na data se necessário
         p_data.drawOn(c, margem_h, 5 * mm)
         
         c.showPage()
@@ -140,7 +136,7 @@ with aba_gerar:
 
         if botao_preparar:
             dados_recebedor = destinos_dict[sigla_selecionada]
-            pdf_buffer = gerar_etiquetas_pdf(sigla_selecionada, politicians_count:=quantidade_sacas, dados_recebedor)
+            pdf_buffer = gerar_etiquetas_pdf(sigla_selecionada, quantidade_sacas, dados_recebedor)
             
             st.success(f"Etiquetas para {sigla_selecionada} geradas com sucesso!")
             st.download_button(
@@ -156,45 +152,4 @@ with aba_admin:
     with st.expander("➕ Cadastrar Novo Aeroporto/Destino"):
         with st.form("form_novo_destino", clear_on_submit=True):
             col1, col2 = st.columns(2)
-            with col1:
-                nova_sigla = st.text_input("Sigla (Ex: CWB):").upper().strip()
-                nome_recebedor = st.text_input("Nome do Recebedor:")
-                cnpj_recebedor = st.text_input("CNPJ:")
-                endereco_recebedor = st.text_input("Endereço:")
-            with col2:
-                cidade_recebedor = st.text_input("Município/Cidade:")
-                uf_recebedor = st.text_input("UF:").upper().strip()
-                cep_recebedor = st.text_input("CEP:")
-                pais_recebedor = st.text_input("País:", value="BRASIL")
-            
-            botao_salvar = st.form_submit_button("Salvar")
-            
-            if botao_salvar:
-                if not nova_sigla:
-                    st.error("A sigla é obrigatória!")
-                elif nova_sigla in destinos_dict:
-                    st.error(f"A sigla {nova_sigla} já existe!")
-                else:
-                    novo_registro = pd.DataFrame([{
-                        'sigla': nova_sigla, 'nome_recebedor': nome_recebedor, 'cnpj_recebedor': cnpj_recebedor,
-                        'endereco_recebedor': endereco_recebedor, 'cidade_recebedor': cidade_recebedor,
-                        'uf_recebedor': uf_recebedor, 'cep_recebedor': cep_recebedor, 'pais_recebedor': pais_recebedor
-                    }])
-                    df_atualizado = pd.concat([df_destinos, novo_registro], ignore_index=True)
-                    salvar_dataframe(df_atualizado)
-                    st.success(f"Destino {nova_sigla} adicionado!")
-                    st.rerun()
-
-    st.write("### Destinos Salvos")
-    if df_destinos.empty:
-        st.write("Nenhum item encontrado.")
-    else:
-        st.dataframe(df_destinos.set_index('sigla'), use_container_width=True)
-        st.write("---")
-        sigla_para_remover = st.selectbox("Remover Destino:", [""] + list(destinos_dict.keys()))
-        if sigla_para_remover:
-            if st.button(f"Confirmar Exclusão de {sigla_para_remover}"):
-                df_restante = df_destinos[df_destinos.sigla != sigla_para_remover]
-                salvar_dataframe(df_restante)
-                st.success(f"{sigla_para_remover} removido.")
-                st.rerun()
+            with col1
