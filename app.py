@@ -49,10 +49,11 @@ def salvar_dataframe(df):
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Tamanho exato: 150mm x 100mm
+    # Tamanho exato padrão: 150mm x 100mm
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
+    # Configuração de estilo exata enviada por você
     style_normal = ParagraphStyle(
         name='Normal', 
         parent=styles['Normal'], 
@@ -68,7 +69,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         margem_h = 5 * mm
         largura_maxima = 140 * mm
         
-        # Cabeçalho exato solicitado
+        # --- Estrutura de Cabeçalho enviada por você ---
         c.setFont('Arial-Bold', 56)
         c.drawString(margem_h, 75 * mm, sigla)
         
@@ -79,8 +80,9 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         
         c.setFont('Arial-Bold', 46)
         c.drawString(margem_h, 55 * mm, "Overpack used")
+        # -----------------------------------------------
         
-        # Textos dos blocos
+        # Textos estruturados
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
@@ -89,17 +91,18 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_data = Paragraph(data_text, style_normal)
         
-        # Coordenadas calibradas para evitar colisões e cortes:
-        # EXPEDIDOR posicionado em 26mm de altura (deixando espaço livre para quebra de linhas)
+        # Coordenadas calculadas milimetricamente de baixo para cima para evitar cortes na folha 100mm:
+        
+        # 4. EXPEDIDOR (Alocado com folga suficiente abaixo do 'Overpack used')
         p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
-        p_expedidor.drawOn(c, margem_h, 26 * mm)
+        p_expedidor.drawOn(c, margem_h, 28 * mm)
         
-        # RECEBEDOR posicionado em 10mm de altura
-        p_recebedor.wrapOn(c, largura_maxima, 15 * mm)
-        p_recebedor.drawOn(c, margem_h, 10 * mm)
+        # 5. RECEBEDOR (Afastado e perfeitamente posicionado no meio da área restante)
+        p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
+        p_recebedor.drawOn(c, margem_h, 12 * mm)
         
-        # DATA DE EXPEDIÇÃO fixada no rodapé a 4mm da base
-        p_data.wrapOn(c, largura_maxima, 5 * mm)
+        # 6. DATA DE EXPEDIÇÃO (Isolada perfeitamente na última linha do rodapé)
+        p_data.wrapOn(c, largura_maxima, 8 * mm)
         p_data.drawOn(c, margem_h, 4 * mm)
         
         c.showPage()
@@ -132,8 +135,6 @@ with aba_gerar:
 
         if botao_preparar:
             dados_recebedor = destinos_dict[sigla_selecionada]
-            
-            # Correção do erro: variável passada corretamente aqui
             pdf_buffer = gerar_etiquetas_pdf(sigla_selecionada, quantidade_sacas, dados_recebedor)
             
             st.success(f"Etiquetas para {sigla_selecionada} geradas com sucesso!")
