@@ -5,7 +5,6 @@ import streamlit as st
 from datetime import datetime
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
-from reportlab.pdfbase import pdfmetrics
 from reportlab.platypus import Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT
@@ -18,16 +17,6 @@ st.set_page_config(
 )
 
 CSV_PATH = 'destinos.csv'
-
-# --- CONFIGURAÇÃO DEFINITIVA DE FONTES (SEM ARQUIVOS EXTERNOS) ---
-# Mapeamos os nomes que você usa para as fontes padrão nativas do ReportLab
-# Isso resolve o erro de "Can't open file" permanentemente no servidor Linux do Streamlit
-pdfmetrics.registerFont(pdfmetrics.embeddedFonts.get('Helvetica', pdfmetrics.embeddedFonts['Helvetica']))
-pdfmetrics.registerFont(pdfmetrics.embeddedFonts.get('Helvetica-Bold', pdfmetrics.embeddedFonts['Helvetica-Bold']))
-
-# Criamos apelidos para que o seu código continue funcionando com 'Arial' sem quebrar
-pdfmetrics.registerFont(pdfmetrics.embeddedFonts['Helvetica'])
-pdfmetrics.registerFont(pdfmetrics.embeddedFonts['Helvetica-Bold'])
 
 # --- FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
 def carregar_dataframe():
@@ -51,11 +40,11 @@ def salvar_dataframe(df):
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Tamanho de página padrão solicitado: 150mm x 100mm
+    # Tamanho de página padrão: 150mm x 100mm
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
-    # Estilo usando 'Helvetica' (substituto nativo seguro para Arial no Linux)
+    # Usando 'Helvetica' diretamente (fonte padrão universal e nativa do ReportLab)
     style_normal = ParagraphStyle(
         name='EtiquetaNormal', 
         parent=styles['Normal'], 
@@ -71,7 +60,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         margem_h = 5 * mm
         largura_maxima = 140 * mm
         
-        # --- Estrutura de Cabeçalho usando as fontes nativas seguras ---
+        # --- Estrutura de Cabeçalho usando as fontes nativas diretas ---
         c.setFont('Helvetica-Bold', 56)
         c.drawString(margem_h, 75 * mm, sigla)
         
@@ -93,17 +82,17 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_data = Paragraph(data_text, style_normal)
         
-        # Coordenadas calibradas de baixo para cima para evitar quebras/sobreposições
+        # Distribuição de baixo para cima calibrada para a folha de 100mm de altura
         
-        # 1. EXPEDIDOR (Alocado com espaço ideal abaixo do 'Overpack used')
+        # 1. EXPEDIDOR (Abaixo do Overpack used com folga)
         p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
         p_expedidor.drawOn(c, margem_h, 28 * mm)
         
-        # 2. RECEBEDOR (Afastado e bem distribuído abaixo)
+        # 2. RECEBEDOR (Afastado no centro inferior)
         p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
         p_recebedor.drawOn(c, margem_h, 12 * mm)
         
-        # 3. DATA DE EXPEDIÇÃO (Isolada perfeitamente na última linha do rodapé)
+        # 3. DATA DE EXPEDIÇÃO (Fica isolada perfeitamente na base do rodapé)
         p_data.wrapOn(c, largura_maxima, 8 * mm)
         p_data.drawOn(c, margem_h, 4 * mm)
         
