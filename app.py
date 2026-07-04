@@ -6,9 +6,7 @@ from datetime import datetime
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-# Forçamos a importação com um nome exclusivo para evitar qualquer conflito na memória
-from reportlab.platypus import Paragraph as PlatypusParagraph
+from reportlab.platypus import Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_LEFT
 
@@ -21,12 +19,15 @@ st.set_page_config(
 
 CSV_PATH = 'destinos.csv'
 
-# --- CONFIGURAÇÕES DE FONTE ---
-try:
-    pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
-    pdfmetrics.registerFont(TTFont('Arial-Bold', 'arialbd.ttf'))
-except Exception as e:
-    pass
+# --- CONFIGURAÇÃO DEFINITIVA DE FONTES (SEM ARQUIVOS EXTERNOS) ---
+# Mapeamos os nomes que você usa para as fontes padrão nativas do ReportLab
+# Isso resolve o erro de "Can't open file" permanentemente no servidor Linux do Streamlit
+pdfmetrics.registerFont(pdfmetrics.embeddedFonts.get('Helvetica', pdfmetrics.embeddedFonts['Helvetica']))
+pdfmetrics.registerFont(pdfmetrics.embeddedFonts.get('Helvetica-Bold', pdfmetrics.embeddedFonts['Helvetica-Bold']))
+
+# Criamos apelidos para que o seu código continue funcionando com 'Arial' sem quebrar
+pdfmetrics.registerFont(pdfmetrics.embeddedFonts['Helvetica'])
+pdfmetrics.registerFont(pdfmetrics.embeddedFonts['Helvetica-Bold'])
 
 # --- FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
 def carregar_dataframe():
@@ -50,15 +51,15 @@ def salvar_dataframe(df):
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Tamanho exato padrão: 150mm x 100mm
+    # Tamanho de página padrão solicitado: 150mm x 100mm
     c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
-    # Configuração de estilo normal com fonte Arial
+    # Estilo usando 'Helvetica' (substituto nativo seguro para Arial no Linux)
     style_normal = ParagraphStyle(
         name='EtiquetaNormal', 
         parent=styles['Normal'], 
-        fontName='Arial', 
+        fontName='Helvetica', 
         fontSize=11, 
         leading=13, 
         alignment=TA_LEFT
@@ -70,36 +71,35 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         margem_h = 5 * mm
         largura_maxima = 140 * mm
         
-        # --- Estrutura de Cabeçalho enviada por si ---
-        c.setFont('Arial-Bold', 56)
+        # --- Estrutura de Cabeçalho usando as fontes nativas seguras ---
+        c.setFont('Helvetica-Bold', 56)
         c.drawString(margem_h, 75 * mm, sigla)
         
         numero_str = f"#{i}"
-        c.setFont('Arial-Bold', 49)
-        largura_texto_num = c.stringWidth(numero_str, 'Arial-Bold', 49)
+        c.setFont('Helvetica-Bold', 49)
+        largura_texto_num = c.stringWidth(numero_str, 'Helvetica-Bold', 49)
         c.drawString((150 * mm) - margem_h - largura_texto_num, 75 * mm, numero_str)
         
-        c.setFont('Arial-Bold', 46)
+        c.setFont('Helvetica-Bold', 46)
         c.drawString(margem_h, 55 * mm, "Overpack used")
-        # -----------------------------------------------
+        # ---------------------------------------------------------------
         
-        # Textos estruturados
+        # Textos das etiquetas
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
         
-        # Criamos os blocos usando o objeto PlatypusParagraph blindado
-        p_expedidor = PlatypusParagraph(expedidor_text, style_normal)
-        p_recebedor = PlatypusParagraph(recebedor_text, style_normal)
-        p_data = PlatypusParagraph(data_text, style_normal)
+        p_expedidor = Paragraph(expedidor_text, style_normal)
+        p_recebedor = Paragraph(recebedor_text, style_normal)
+        p_data = Paragraph(data_text, style_normal)
         
-        # Coordenadas seguras calculadas de baixo para cima na folha de 100mm de altura:
+        # Coordenadas calibradas de baixo para cima para evitar quebras/sobreposições
         
-        # 1. EXPEDIDOR (Alocado com folga suficiente abaixo do 'Overpack used')
+        # 1. EXPEDIDOR (Alocado com espaço ideal abaixo do 'Overpack used')
         p_expedidor.wrapOn(c, largura_maxima, 20 * mm)
         p_expedidor.drawOn(c, margem_h, 28 * mm)
         
-        # 2. RECEBEDOR (Afastado e bem distribuído abaixo do Expedidor)
+        # 2. RECEBEDOR (Afastado e bem distribuído abaixo)
         p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
         p_recebedor.drawOn(c, margem_h, 12 * mm)
         
