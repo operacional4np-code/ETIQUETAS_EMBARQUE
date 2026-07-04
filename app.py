@@ -45,12 +45,12 @@ def carregar_dataframe():
 def salvar_dataframe(df):
     df.to_csv(CSV_PATH, index=False, sep=';')
 
-# --- GERAÇÃO DA ETIQUETA COM TAMANHO AMPLIADO (150mm x 125mm) ---
+# --- GERAÇÃO DA ETIQUETA EM FORMATO RETRATO (100mm x 150mm) ---
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
     
-    # Aumentamos a altura de 100mm para 125mm para dar espaço de sobra
-    c = canvas.Canvas(buffer, pagesize=(150 * mm, 125 * mm))
+    # Nova dimensão solicitada: 100mm de largura por 150mm de altura
+    c = canvas.Canvas(buffer, pagesize=(100 * mm, 150 * mm))
     styles = getSampleStyleSheet()
     
     font_name = 'Arial' if 'Arial' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
@@ -61,7 +61,7 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         parent=styles['Normal'], 
         fontName=font_name, 
         fontSize=11,       
-        leading=15,        # Mais espaço entre as linhas internas de cada bloco
+        leading=14,        # Espaçamento entre linhas interno
         alignment=TA_LEFT
     )
     
@@ -69,23 +69,23 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     
     for i in range(1, quantidade + 1):
         margem_h = 5 * mm
-        largura_maxima = 140 * mm
+        largura_maxima = 90 * mm  # Ajustado para caber na largura de 100mm com margens
         
-        # 1. Sigla do Destino (No topo da nova altura)
+        # 1. Sigla do Destino (No topo da folha de 150mm)
         c.setFont(font_bold, 56)
-        c.drawString(margem_h, 100 * mm, sigla)
+        c.drawString(margem_h, 125 * mm, sigla)
         
-        # 2. Número da Saca (No topo da nova altura)
+        # 2. Número da Saca (No topo da folha de 150mm)
         numero_str = f"#{i}"
         c.setFont(font_bold, 49)
         largura_texto_num = c.stringWidth(numero_str, font_bold, 49)
-        c.drawString((150 * mm) - margem_h - largura_texto_num, 100 * mm, numero_str)
+        c.drawString((100 * mm) - margem_h - largura_texto_num, 125 * mm, numero_str)
         
-        # 3. Overpack used (Abaixo da sigla)
-        c.setFont(font_bold, 46)
-        c.drawString(margem_h, 80 * mm, "Overpack used")
+        # 3. Overpack used (Logo abaixo da sigla)
+        c.setFont(font_bold, 44)  # Reduzido um ponto para caber perfeitamente nos 100mm de largura
+        c.drawString(margem_h, 105 * mm, "Overpack used")
         
-        # Textos estruturados
+        # Textos padronizados
         expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
@@ -94,17 +94,17 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_data = Paragraph(data_text, style_normal)
         
-        # 4. Desenha EXPEDIDOR (Posicionado confortavelmente em 52mm de altura)
-        p_expedidor.wrapOn(c, largura_maxima, 25 * mm)
-        p_expedidor.drawOn(c, margem_h, 52 * mm)
+        # 4. Desenha EXPEDIDOR (Posicionado na metade superior, em 65mm de altura)
+        p_expedidor.wrapOn(c, largura_maxima, 35 * mm)
+        p_expedidor.drawOn(c, margem_h, 65 * mm)
         
-        # 5. Desenha RECEBEDOR (Posicionado bem abaixo do Expedidor, em 24mm de altura)
-        p_recebedor.wrapOn(c, largura_maxima, 25 * mm)
-        p_recebedor.drawOn(c, margem_h, 24 * mm)
+        # 5. Desenha RECEBEDOR (Afastado e bem distribuído abaixo, em 20mm de altura)
+        p_recebedor.wrapOn(c, largura_maxima, 35 * mm)
+        p_recebedor.drawOn(c, margem_h, 20 * mm)
         
-        # 6. Desenha DATA DE EXPEDIÇÃO (Isolada na última linha do rodapé, a 6mm da base)
+        # 6. Desenha DATA DE EXPEDIÇÃO (Isolada e colada na última linha do rodapé)
         p_data.wrapOn(c, largura_maxima, 10 * mm)
-        p_data.drawOn(c, margem_h, 6 * mm)
+        p_data.drawOn(c, margem_h, 5 * mm)
         
         c.showPage()
         
