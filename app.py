@@ -25,40 +25,44 @@ try:
     pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
     pdfmetrics.registerFont(TTFont('Arial-Bold', 'arialbd.ttf'))
 except Exception as e:
-    # Se rodar no servidor do Streamlit Cloud, ele usará Helvetica que é idêntica e nativa
     pass
 
 # --- FUNÇÕES DE MANIPULAÇÃO DE DADOS ---
 def carregar_dataframe():
-    colunas = ['sigla', 'nome_recebedor', 'cnpj_recebedor', 'endereco_recebedor', 'cidade_recebedor', 'uf_recebedor', 'cep_recebedor', 'pais_recebedor']
     if not os.path.exists(CSV_PATH):
+        colunas = ['sigla', 'nome_recebedor', 'cnpj_recebedor', 'endereco_recebedor', 'cidade_recebedor', 'uf_recebedor', 'cep_recebedor', 'pais_recebedor']
         return pd.DataFrame(columns=colunas)
-    df = pd.read_csv(CSV_PATH)
-    for col in colunas:
+    
+    # CORREÇÃO: Lendo com separador ';' que está no seu arquivo
+    df = pd.read_csv(CSV_PATH, sep=';')
+    
+    # CORREÇÃO: Força todas as colunas a ficarem em letras minúsculas para o script não se perder
+    df.columns = df.columns.str.lower()
+    
+    colunas_obrigatorias = ['sigla', 'nome_recebedor', 'cnpj_recebedor', 'endereco_recebedor', 'cidade_recebedor', 'uf_recebedor', 'cep_recebedor', 'pais_recebedor']
+    for col in colunas_obrigatorias:
         if col not in df.columns:
             df[col] = ""
     return df
 
 def salvar_dataframe(df):
-    df.to_csv(CSV_PATH, index=False)
+    # Salva mantendo o padrão de ponto e vírgula do seu arquivo
+    df.to_csv(CSV_PATH, index=False, sep=';')
 
-# --- GERAÇÃO DA ETIQUETA EXATAMENTE IGUAL AO MODELO (100x100mm) ---
+# --- GERAÇÃO DA ETIQUETA (100x100mm) ---
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
-    
-    # Define o tamanho exato da etiqueta: 100mm x 100mm conforme seu arquivo de referência
     c = canvas.Canvas(buffer, pagesize=(100 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
     font_name = 'Arial' if 'Arial' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
     font_bold = 'Arial-Bold' if 'Arial-Bold' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold'
     
-    # Estilo de texto compacto idêntico ao formato de etiqueta térmica
     style_normal = ParagraphStyle(
         name='Normal', 
         parent=styles['Normal'], 
         fontName=font_name, 
-        fontSize=8,       # Tamanho ideal para caber no bloco 100x100
+        fontSize=8,       
         leading=10, 
         alignment=TA_LEFT
     )
@@ -69,7 +73,6 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         margem_h = 4 * mm
         largura_maxima = 92 * mm
         
-        # 1. Linha Superior: Destino (Esquerda) e Número da Saca (Direita)
         c.setFont(font_bold, 36)
         c.drawString(margem_h, 85 * mm, sigla)
         
@@ -78,12 +81,10 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
         largura_texto_num = c.stringWidth(numero_str, font_bold, 32)
         c.drawString((100 * mm) - margem_h - largura_texto_num, 85 * mm, numero_str)
         
-        # 2. Segunda Linha: OVERPACK USED
         c.setFont(font_bold, 24)
         c.drawString(margem_h, 72 * mm, "OVERPACK")
         c.drawString(margem_h, 64 * mm, " USED")
         
-        # 3. Bloco do Expedidor (com a Data de Expedição incluída)
         expedidor_text = (
             f"<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - "
             f"JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 "
@@ -91,19 +92,16 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
             f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
         )
         
-        # 4. Bloco do Recebedor baseado no CSV
         recebedor_text = (
             f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} "
             f"CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']} "
             f"MUNICÍPIO: {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         )
         
-        # Desenha o Expedidor na metade da etiqueta
         p_expedidor = Paragraph(expedidor_text, style_normal)
         p_expedidor.wrapOn(c, largura_maxima, 25 * mm)
         p_expedidor.drawOn(c, margem_h, 34 * mm)
         
-        # Desenha o Recebedor na parte inferior
         p_recebedor = Paragraph(recebedor_text, style_normal)
         p_recebedor.wrapOn(c, largura_maxima, 25 * mm)
         p_recebedor.drawOn(c, margem_h, 6 * mm)
