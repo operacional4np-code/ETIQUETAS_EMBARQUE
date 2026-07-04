@@ -18,34 +18,43 @@ def carregar_dataframe():
 
 def gerar_etiquetas_pdf(sigla, quantidade, dados):
     buffer = io.BytesIO()
-    # Tamanho fixo 100x100mm
     c = canvas.Canvas(buffer, pagesize=(100 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
-    # Estilo dos blocos de dados
-    style_normal = ParagraphStyle('Normal', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
+    # Estilo compacto para caber todas as informações da referência
+    style_normal = ParagraphStyle('Normal', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=9)
     
     for i in range(1, quantidade + 1):
-        # 1. Cabeçalho (Topo)
+        # 1. Cabeçalho (Sigla e Número)
         c.setFont('Helvetica-Bold', 36)
         c.drawString(4*mm, 86*mm, sigla)
         c.drawString(78*mm, 86*mm, f"#{i}")
         
-        # 2. OVERPACK USED (Fonte 40, alinhado com a referência)
+        # 2. OVERPACK USED (Fonte 40)
         c.setFont('Helvetica-Bold', 40)
         c.drawString(4*mm, 70*mm, "OVERPACK")
         c.drawString(4*mm, 58*mm, "USED")
         
-        # 3. Blocos de Texto (Expedidor e Recebedor)
-        # Ajustamos o início do desenho para 45mm para não bater no "USED"
-        exp = f"<b>EXPEDIDOR:</b> NEW POST LOGISTICA | R UBALDO FAGGEANI, 355 - PORTO FERREIRA/SP | CNPJ: 28.678.104/0001-79"
-        rec = f"<b>RECEBEDOR:</b> {dados['nome_recebedor']} | {dados['endereco_recebedor']}, {dados['cidade_recebedor']}-{dados['uf_recebedor']} | CEP: {dados['cep_recebedor']}"
+        # 3. TEXTOS COMPLETOS (Conforme a referência)
+        # Expedidor com IE, UF e PAIS
+        exp_texto = (
+            "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - "
+            "JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 "
+            "CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
+        )
+        # Recebedor com todos os dados
+        rec_texto = (
+            f"<b>RECEBEDOR:</b> {dados['nome_recebedor']} CNPJ {dados['cnpj_recebedor']} "
+            f"ENDEREÇO: {dados['endereco_recebedor']}, {dados['cidade_recebedor']} - "
+            f"{dados['uf_recebedor']} CEP: {dados['cep_recebedor']}"
+        )
         
-        p1 = Paragraph(exp, style_normal)
-        p1.wrapOn(c, 92*mm, 20*mm)
+        # Desenho dos blocos
+        p1 = Paragraph(exp_texto, style_normal)
+        p1.wrapOn(c, 92*mm, 30*mm)
         p1.drawOn(c, 4*mm, 35*mm)
         
-        p2 = Paragraph(rec, style_normal)
+        p2 = Paragraph(rec_texto, style_normal)
         p2.wrapOn(c, 92*mm, 20*mm)
         p2.drawOn(c, 4*mm, 18*mm)
         
@@ -58,10 +67,9 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados):
     buffer.seek(0)
     return buffer
 
-# --- INTERFACE ---
+# Interface Streamlit
 st.title("✈️ Emissor de Etiquetas")
 df = carregar_dataframe()
-
 if not df.empty:
     sigla = st.selectbox("Destino:", df['sigla'].unique())
     qtd = st.number_input("Quantidade:", min_value=1, value=1)
