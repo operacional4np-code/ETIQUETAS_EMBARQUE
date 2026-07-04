@@ -21,44 +21,41 @@ def gerar_etiquetas_pdf(sigla, quantidade, dados):
     c = canvas.Canvas(buffer, pagesize=(100 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
-    # Estilo compacto para caber todas as informações da referência
-    style_normal = ParagraphStyle('Normal', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=9)
+    # Estilo compacto e preciso para caber na etiqueta de 100x100mm
+    style_normal = ParagraphStyle('Normal', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
     
     for i in range(1, quantidade + 1):
-        # 1. Cabeçalho (Sigla e Número)
+        # 1. CÓDIGO (CWB) e Nº SACA (Aumentei um pouco a margem superior do layout)
         c.setFont('Helvetica-Bold', 36)
-        c.drawString(4*mm, 86*mm, sigla)
-        c.drawString(78*mm, 86*mm, f"#{i}")
+        c.drawString(4*mm, 88*mm, sigla)
+        c.drawString(78*mm, 88*mm, f"#{i}")
         
-        # 2. OVERPACK USED (Fonte 40)
-        c.setFont('Helvetica-Bold', 40)
-        c.drawString(4*mm, 70*mm, "OVERPACK")
-        c.drawString(4*mm, 58*mm, "USED")
+        # 2. OVERPACK USED (Fonte ajustada para 38 e margem superior aumentada)
+        c.setFont('Helvetica-Bold', 38)
+        c.drawString(4*mm, 74*mm, "OVERPACK")
+        c.drawString(4*mm, 62*mm, "USED")
         
-        # 3. TEXTOS COMPLETOS (Conforme a referência)
-        # Expedidor com IE, UF e PAIS
+        # 3. BLOCOS DE TEXTO (Posicionamento recalculado para manter a organização)
         exp_texto = (
             "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - "
             "JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 "
             "CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         )
-        # Recebedor com todos os dados
         rec_texto = (
             f"<b>RECEBEDOR:</b> {dados['nome_recebedor']} CNPJ {dados['cnpj_recebedor']} "
             f"ENDEREÇO: {dados['endereco_recebedor']}, {dados['cidade_recebedor']} - "
             f"{dados['uf_recebedor']} CEP: {dados['cep_recebedor']}"
         )
         
-        # Desenho dos blocos
         p1 = Paragraph(exp_texto, style_normal)
         p1.wrapOn(c, 92*mm, 30*mm)
-        p1.drawOn(c, 4*mm, 35*mm)
+        p1.drawOn(c, 4*mm, 38*mm) # Ajustado para descer conforme a nova margem
         
         p2 = Paragraph(rec_texto, style_normal)
         p2.wrapOn(c, 92*mm, 20*mm)
         p2.drawOn(c, 4*mm, 18*mm)
         
-        # 4. Data
+        # 4. Data de Expedição
         c.setFont('Helvetica', 8)
         c.drawString(4*mm, 6*mm, f"DATA DE EXPEDIÇÃO: {datetime.now().strftime('%d/%m/%Y')}")
         
