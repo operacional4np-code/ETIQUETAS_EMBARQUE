@@ -33,10 +33,7 @@ def carregar_dataframe():
         colunas = ['sigla', 'nome_recebedor', 'cnpj_recebedor', 'endereco_recebedor', 'cidade_recebedor', 'uf_recebedor', 'cep_recebedor', 'pais_recebedor']
         return pd.DataFrame(columns=colunas)
     
-    # CORREÇÃO: Lendo com separador ';' que está no seu arquivo
     df = pd.read_csv(CSV_PATH, sep=';')
-    
-    # CORREÇÃO: Força todas as colunas a ficarem em letras minúsculas para o script não se perder
     df.columns = df.columns.str.lower()
     
     colunas_obrigatorias = ['sigla', 'nome_recebedor', 'cnpj_recebedor', 'endereco_recebedor', 'cidade_recebedor', 'uf_recebedor', 'cep_recebedor', 'pais_recebedor']
@@ -46,65 +43,72 @@ def carregar_dataframe():
     return df
 
 def salvar_dataframe(df):
-    # Salva mantendo o padrão de ponto e vírgula do seu arquivo
     df.to_csv(CSV_PATH, index=False, sep=';')
 
-# --- GERAÇÃO DA ETIQUETA (100x100mm) ---
+# --- GERAÇÃO DA ETIQUETA COM MEDIDAS EXATAS ---
 def gerar_etiquetas_pdf(sigla, quantidade, dados_recebedor):
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=(100 * mm, 100 * mm))
+    
+    # MEDIDA EXATA DO SEU MODELO ORIGINAL: 150mm de largura por 100mm de altura
+    c = canvas.Canvas(buffer, pagesize=(150 * mm, 100 * mm))
     styles = getSampleStyleSheet()
     
     font_name = 'Arial' if 'Arial' in pdfmetrics.getRegisteredFontNames() else 'Helvetica'
     font_bold = 'Arial-Bold' if 'Arial-Bold' in pdfmetrics.getRegisteredFontNames() else 'Helvetica-Bold'
     
+    # Tamanho de fonte 11 e leading 13 idênticos ao script original
     style_normal = ParagraphStyle(
         name='Normal', 
         parent=styles['Normal'], 
         fontName=font_name, 
-        fontSize=8,       
-        leading=10, 
+        fontSize=11,       
+        leading=13, 
         alignment=TA_LEFT
     )
     
     data_atual = datetime.now().strftime("%d/%m/%Y")
     
     for i in range(1, quantidade + 1):
-        margem_h = 4 * mm
-        largura_maxima = 92 * mm
+        margem_h = 5 * mm
+        largura_maxima = 140 * mm
         
-        c.setFont(font_bold, 36)
-        c.drawString(margem_h, 85 * mm, sigla)
+        # 1. Sigla do Destino (Tamanho 56)
+        c.setFont(font_bold, 56)
+        c.drawString(margem_h, 75 * mm, sigla)
         
+        # 2. Número da Saca (Tamanho 49)
         numero_str = f"#{i}"
-        c.setFont(font_bold, 32)
-        largura_texto_num = c.stringWidth(numero_str, font_bold, 32)
-        c.drawString((100 * mm) - margem_h - largura_texto_num, 85 * mm, numero_str)
+        c.setFont(font_bold, 49)
+        largura_texto_num = c.stringWidth(numero_str, font_bold, 49)
+        c.drawString((150 * mm) - margem_h - largura_texto_num, 75 * mm, numero_str)
         
-        c.setFont(font_bold, 24)
-        c.drawString(margem_h, 72 * mm, "OVERPACK")
-        c.drawString(margem_h, 64 * mm, " USED")
+        # 3. OVERPACK USED (Tamanho 46)
+        c.setFont(font_bold, 46)
+        c.drawString(margem_h, 55 * mm, "Overpack used")
         
-        expedidor_text = (
-            f"<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - "
-            f"JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 "
-            f"CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL "
-            f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
-        )
+        # 4. Texto do Expedidor (Original, sem a data misturada)
+        expedidor_text = "<b>EXPEDIDOR:</b> NEW POST LOGISTICA ENDEREÇO: R UBALDO FAGGEANI, 355,0 - JARDIM RESIDENCIAL LAS PALMAS MUNICÍPIO: PORTO FERREIRA - SP CEP: 13660-000 CNPJ/CPF: 28.678.104/0001-79 IE: 555074223110 UF: SP PAÍS: BRASIL"
         
-        recebedor_text = (
-            f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} "
-            f"CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']} "
-            f"MUNICÍPIO: {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
-        )
+        # 5. Texto do Recebedor (Original)
+        recebedor_text = f"<b>RECEBEDOR:</b> {dados_recebedor['nome_recebedor']} CNPJ {dados_recebedor['cnpj_recebedor']} ENDEREÇO: {dados_recebedor['endereco_recebedor']}, {dados_recebedor['cidade_recebedor']} - {dados_recebedor['uf_recebedor']} CEP: {dados_recebedor['cep_recebedor']}"
         
+        # 6. Texto da Data de Expedição (Para a última linha da etiqueta)
+        data_text = f"<b>DATA DE EXPEDIÇÃO:</b> {data_atual}"
+        
+        # Desenha o Expedidor na posição exata de 28mm de altura
         p_expedidor = Paragraph(expedidor_text, style_normal)
-        p_expedidor.wrapOn(c, largura_maxima, 25 * mm)
-        p_expedidor.drawOn(c, margem_h, 34 * mm)
+        p_expedidor.wrapOn(c, largura_maxima, 40 * mm)
+        p_expedidor.drawOn(c, margem_h, 28 * mm)
         
+        # Desenha o Recebedor posicionado um pouco acima (13mm de altura) para dar espaço para a data
         p_recebedor = Paragraph(recebedor_text, style_normal)
-        p_recebedor.wrapOn(c, largura_maxima, 25 * mm)
-        p_recebedor.drawOn(c, margem_h, 6 * mm)
+        p_recebedor.wrapOn(c, largura_maxima, 20 * mm)
+        p_recebedor.drawOn(c, margem_h, 13 * mm)
+        
+        # Desenha a Data de Expedição isolada na última linha (na base de 5mm de altura)
+        p_data = Paragraph(data_text, style_normal)
+        p_data.wrapOn(c, largura_maxima, 10 * mm)
+        p_data.drawOn(c, margem_h, 5 * mm)
         
         c.showPage()
         
@@ -136,7 +140,7 @@ with aba_gerar:
 
         if botao_preparar:
             dados_recebedor = destinos_dict[sigla_selecionada]
-            pdf_buffer = gerar_etiquetas_pdf(sigla_selecionada, quantidade_sacas, dados_recebedor)
+            pdf_buffer = gerar_etiquetas_pdf(sigla_selecionada, politicians_count:=quantidade_sacas, dados_recebedor)
             
             st.success(f"Etiquetas para {sigla_selecionada} geradas com sucesso!")
             st.download_button(
