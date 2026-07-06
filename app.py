@@ -18,7 +18,7 @@ def carregar_dataframe():
 
 def gerar_etiquetas_pdf(sigla, quantidade, dados):
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=(100 * mm, 100 * mm))
+    c = canvas.Canvas(buffer, pagesize=(100 * mm, 140 * mm))
     styles = getSampleStyleSheet()
     style_normal = ParagraphStyle('Normal', parent=styles['Normal'], fontName='Helvetica', fontSize=8, leading=10)
     
